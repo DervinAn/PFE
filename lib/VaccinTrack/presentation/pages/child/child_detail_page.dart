@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 import '../../../domain/entities/child_entity.dart';
@@ -18,7 +19,7 @@ class ChildDetailPage extends StatefulWidget {
 }
 
 class _ChildDetailPageState extends State<ChildDetailPage> {
-  String _parentName = 'Parent';
+  String _parentName = '';
   List<ChildEntity> _children = const [];
   String _activeChildId = '';
   bool _hasUnreadAlerts = false;
@@ -80,7 +81,7 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
 
     if (!mounted) return;
     setState(() {
-      _parentName = user['name'] ?? 'Parent';
+      _parentName = user['name'] ?? '';
       _children = children;
       _activeChildId = activeChildId;
       _hasUnreadAlerts = hasUnreadAlerts;
@@ -90,6 +91,7 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
   }
 
   Future<_UrgentTask?> _resolveUrgentTask(String childId) async {
+    final l10n = AppLocaleController.instance.l10n;
     final schedule = await LocalAppStorage.instance.getComputedSchedule(childId);
     final candidates = <VaccineEntity>[];
     for (final group in schedule) {
@@ -132,7 +134,7 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
     return _UrgentTask(
       childId: childId,
       plannedDoseId: target.plannedDoseId ?? target.id,
-      vaccineLabel: '${target.name} (Dose ${target.doseNumber})',
+      vaccineLabel: '${target.name} (${l10n.doseOf(target.doseNumber, target.totalDoses)})',
       scheduledDate: scheduled,
       daysFromToday: daysFromToday,
       status: target.status,
@@ -140,36 +142,37 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
   }
 
   _ActivityEntry _activityFromRecord(VaccinationRecordEntity record) {
+    final l10n = AppLocaleController.instance.l10n;
     final firstName = record.childName.split(' ').first;
     final clinic = (record.clinicName != null && record.clinicName!.isNotEmpty)
-        ? ' at ${record.clinicName}'
+        ? ' ${l10n.atLabel} ${record.clinicName}'
         : '';
     return _ActivityEntry(
       icon: Icons.check_circle,
       iconColor: AppColors.primary,
-      title: '${record.vaccineName} completed',
-      subtitle: '$firstName received ${record.doseLabel.toLowerCase()}$clinic',
-      timeAgo: _timeAgo(record.administeredDate),
+      title: '${record.vaccineName} ${l10n.completed.toLowerCase()}',
+      subtitle: '$firstName ${l10n.receivedLabel} ${record.doseLabel.toLowerCase()}$clinic',
+      timeAgo: _timeAgo(record.administeredDate, l10n),
     );
   }
 
-  String _timeAgo(DateTime date) {
+  String _timeAgo(DateTime date, AppLocalizations l10n) {
     final diff = DateTime.now().difference(date);
     if (diff.inDays >= 30) {
       final months = (diff.inDays / 30).floor();
-      return '$months MONTH${months > 1 ? 'S' : ''} AGO';
+      return l10n.monthsAgo(months);
     }
     if (diff.inDays >= 7) {
       final weeks = (diff.inDays / 7).floor();
-      return '$weeks WEEK${weeks > 1 ? 'S' : ''} AGO';
+      return l10n.weeksAgo(weeks);
     }
     if (diff.inDays >= 1) {
-      return '${diff.inDays} DAY${diff.inDays > 1 ? 'S' : ''} AGO';
+      return l10n.daysAgo(diff.inDays);
     }
     if (diff.inHours >= 1) {
-      return '${diff.inHours} HOUR${diff.inHours > 1 ? 'S' : ''} AGO';
+      return l10n.hoursAgo(diff.inHours);
     }
-    return 'JUST NOW';
+    return l10n.justNow;
   }
 
   void _onBottomNavTap(int i) {
@@ -189,12 +192,14 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
       bottomNavigationBar: AppBottomNav(
         currentIndex: 0,
         onTap: _onBottomNavTap,
-        items: kMainBottomNavItems,
+        items: mainBottomNavItems(context),
       ),
     );
   }
 
   Widget _buildHomeTab() {
+    final l10n = context.l10n;
+    final parentName = _parentName.isEmpty ? l10n.parent : _parentName;
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
@@ -206,14 +211,14 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
                 // Greeting header
                 Row(
                   children: [
-                    AppAvatar(name: _parentName, size: 44),
+                    AppAvatar(name: parentName, size: 44),
                     const SizedBox(width: AppSizes.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hello, $_parentName 👋',
+                            '${l10n.hello}, $parentName 👋',
                             style: TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: AppSizes.fontXl,
@@ -223,8 +228,10 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
                           ),
                           Text(
                             _activeChild != null
-                                ? "Ready for ${_activeChild!.name.split(' ').first}'s checkup?"
-                                : 'Ready for checkup?',
+                                ? l10n.readyForChildCheckup(
+                                    _activeChild!.name.split(' ').first,
+                                  )
+                                : l10n.readyForCheckup,
                             style: TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: AppSizes.fontSm,
@@ -293,7 +300,7 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
                             avatarName: c.name,
                             isActive: isActive,
                             badge: isActive
-                                ? 'NEXT: ${c.nextVaccineName ?? 'Check'}'
+                                ? '${l10n.nextBadge}: ${c.nextVaccineName ?? l10n.check}'
                                 : null,
                             onTap: () async {
                               setState(() {
@@ -336,8 +343,8 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Add Child',
+                            Text(
+                              l10n.addChild,
                               style: TextStyle(
                                 fontFamily: 'Nunito',
                                 fontSize: AppSizes.fontXs,
@@ -355,6 +362,7 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
                 // Urgent task card
                 _UrgentTaskCard(
                   task: _urgentTask,
+                  l10n: l10n,
                   onConfirm: () async {
                     final task = _urgentTask;
                     if (task == null) return;
@@ -391,7 +399,7 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
                       icon: Icons.calendar_today_rounded,
                       iconBg: AppColors.primaryLight,
                       iconColor: AppColors.primary,
-                      label: 'Calendar',
+                      label: l10n.calendar,
                       onTap: () {
                         if (_activeChildId.isEmpty) {
                           context.push(AppRoutes.addChildProfile);
@@ -404,21 +412,21 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
                       icon: Icons.add_circle_outline,
                       iconBg: AppColors.successLight,
                       iconColor: AppColors.success,
-                      label: 'Record Vaccine',
+                      label: l10n.recordVaccine,
                       onTap: () => context.push(AppRoutes.recordVaccination),
                     ),
                     _QuickAction(
                       icon: Icons.history_rounded,
                       iconBg: const Color(0xFFEDE7F6),
                       iconColor: const Color(0xFF7C3AED),
-                      label: 'History',
+                      label: l10n.history,
                       onTap: () => context.push(AppRoutes.vaccinationHistory),
                     ),
                     _QuickAction(
                       icon: Icons.menu_book_rounded,
                       iconBg: AppColors.errorLight,
                       iconColor: AppColors.error,
-                      label: 'Guide',
+                      label: l10n.guideTitle,
                       onTap: () => context.push(AppRoutes.guide),
                     ),
                   ],
@@ -427,8 +435,8 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
 
                 // Recent activity
                 SectionHeader(
-                  title: 'Recent Activity',
-                  actionLabel: 'View All',
+                  title: l10n.recentActivity,
+                  actionLabel: l10n.viewAll,
                   onAction: () => context.push(AppRoutes.vaccinationHistory),
                 ),
                 const SizedBox(height: AppSizes.md),
@@ -440,8 +448,8 @@ class _ChildDetailPageState extends State<ChildDetailPage> {
                       color: AppColors.white,
                       borderRadius: BorderRadius.circular(AppSizes.radiusLg),
                     ),
-                    child: const Text(
-                      'No activity yet. Record a vaccine to see updates here.',
+                    child: Text(
+                      l10n.noActivityYet,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         color: AppColors.textSecondary,
@@ -544,11 +552,13 @@ class _ChildChip extends StatelessWidget {
 
 class _UrgentTaskCard extends StatelessWidget {
   final _UrgentTask? task;
+  final AppLocalizations l10n;
   final VoidCallback onConfirm;
   final VoidCallback onOpenSchedule;
 
   const _UrgentTaskCard({
     required this.task,
+    required this.l10n,
     required this.onConfirm,
     required this.onOpenSchedule,
   });
@@ -577,9 +587,9 @@ class _UrgentTaskCard extends StatelessWidget {
 
   String get _countTopLabel {
     if (task == null) return '';
-    if (task!.status == VaccineStatus.overdue) return 'LATE';
-    if (task!.daysFromToday <= 0) return 'TODAY';
-    return 'IN';
+    if (task!.status == VaccineStatus.overdue) return l10n.late;
+    if (task!.daysFromToday <= 0) return l10n.today.toUpperCase();
+    return l10n.inLabel;
   }
 
   String get _countValue {
@@ -590,8 +600,8 @@ class _UrgentTaskCard extends StatelessWidget {
 
   String get _countBottomLabel {
     if (task == null) return '';
-    if (task!.daysFromToday == 1) return 'DAY';
-    return 'DAYS';
+    if (task!.daysFromToday == 1) return l10n.dayLabel;
+    return l10n.daysLabel;
   }
 
   @override
@@ -602,7 +612,7 @@ class _UrgentTaskCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.successLight,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-          border: Border.all(color: AppColors.success.withOpacity(0.25)),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
         ),
         child: Row(
           children: [
@@ -610,7 +620,7 @@ class _UrgentTaskCard extends StatelessWidget {
             const SizedBox(width: AppSizes.sm),
             Expanded(
               child: Text(
-                'No urgent task right now. Vaccines are on track.',
+                l10n.noUrgentTaskRightNow,
                 style: TextStyle(
                   fontFamily: 'Nunito',
                   fontSize: AppSizes.fontMd,
@@ -629,7 +639,7 @@ class _UrgentTaskCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFBF0),
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-        border: Border.all(color: _accentColor.withOpacity(0.3)),
+        border: Border.all(color: _accentColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,13 +657,13 @@ class _UrgentTaskCard extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: _accentColor.withOpacity(0.12),
+                        color: _accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(
                           AppSizes.radiusFull,
                         ),
                       ),
                       child: Text(
-                        'URGENT TASK',
+                        l10n.urgentTask,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontXs,
@@ -752,8 +762,8 @@ class _UrgentTaskCard extends StatelessWidget {
                     ),
                     child: Text(
                       task!.status == VaccineStatus.overdue
-                          ? 'Record Now'
-                          : 'Confirm Appointment',
+                          ? l10n.recordNow
+                          : l10n.confirmAppointment,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontWeight: FontWeight.w700,
@@ -810,7 +820,7 @@ class _QuickAction extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textPrimary.withOpacity(0.04),
+              color: AppColors.textPrimary.withValues(alpha: 0.04),
               blurRadius: 8,
             ),
           ],

@@ -3,6 +3,7 @@ class ChildEntity {
   final String id;
   final String name;
   final DateTime dateOfBirth;
+  final String? gender;
   final String? photoUrl;
   final int totalVaccines;
   final int completedVaccines;
@@ -14,6 +15,7 @@ class ChildEntity {
     required this.id,
     required this.name,
     required this.dateOfBirth,
+    this.gender,
     this.photoUrl,
     required this.totalVaccines,
     required this.completedVaccines,
@@ -41,6 +43,7 @@ class ChildEntity {
       'id': id,
       'name': name,
       'dateOfBirth': dateOfBirth.toIso8601String(),
+      'gender': gender,
       'photoUrl': photoUrl,
       'totalVaccines': totalVaccines,
       'completedVaccines': completedVaccines,
@@ -57,6 +60,7 @@ class ChildEntity {
       dateOfBirth:
           DateTime.tryParse((json['dateOfBirth'] ?? '').toString()) ??
           DateTime.now(),
+      gender: json['gender'] as String?,
       photoUrl: json['photoUrl'] as String?,
       totalVaccines: (json['totalVaccines'] as num?)?.toInt() ?? 0,
       completedVaccines: (json['completedVaccines'] as num?)?.toInt() ?? 0,

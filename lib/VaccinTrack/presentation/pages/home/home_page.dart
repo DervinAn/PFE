@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
+import '../../../core/notifications/local_notification_service.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 import '../../../domain/entities/child_entity.dart';
@@ -45,30 +47,31 @@ class _HomePageState extends State<HomePage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete child profile'),
+        title: Text(context.l10n.deleteChildProfileTitle),
         content: Text(
-          'Are you sure you want to delete ${child.name} and all vaccination history?',
+          context.l10n.deleteChildProfileBody(child.name),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
     );
     if (confirm != true) return;
     await LocalAppStorage.instance.deleteChild(child.id);
+    await LocalNotificationService.instance.resyncVaccineReminders();
     if (!mounted) return;
     await _loadChildren();
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('${child.name} deleted')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.childDeleted(child.name))),
+    );
   }
 
   ChildEntity? get _nextDueChild {
@@ -81,13 +84,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _dueLabel(DateTime date) {
+    final l10n = AppLocaleController.instance.l10n;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final due = DateTime(date.year, date.month, date.day);
     final days = due.difference(today).inDays;
-    if (days <= 0) return 'today';
-    if (days == 1) return 'tomorrow';
-    return 'in $days days';
+    if (days <= 0) return l10n.today;
+    if (days == 1) return l10n.tomorrow;
+    return l10n.dueInDays(days);
   }
 
   @override
@@ -115,7 +119,7 @@ class _HomePageState extends State<HomePage> {
           currentIndex: 0,
           preferredChildId: _primaryChildId,
         ),
-        items: kMainBottomNavItems,
+        items: mainBottomNavItems(context),
       ),
     );
   }
@@ -138,7 +142,7 @@ class _HomePageState extends State<HomePage> {
                 _buildSearchBar(),
                 const SizedBox(height: AppSizes.lg),
                 SectionHeader(
-                  title: 'Your Children',
+                  title: context.l10n.yourChildren,
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSizes.md,
@@ -149,7 +153,7 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                     ),
                     child: Text(
-                      '${_children.length} Profiles',
+                      '${_children.length} ${context.l10n.profiles}',
                       style: const TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: AppSizes.fontSm,
@@ -182,8 +186,8 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.primary,
                     ),
                     const SizedBox(height: AppSizes.sm),
-                    const Text(
-                      'No child profiles yet',
+                    Text(
+                      context.l10n.noChildProfilesYet,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontWeight: FontWeight.w700,
@@ -191,8 +195,8 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     const SizedBox(height: AppSizes.xs),
-                    const Text(
-                      'Tap the + button to create the first family child profile.',
+                    Text(
+                      context.l10n.tapPlusToCreateFirstFamilyChildProfile,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Nunito',
@@ -251,8 +255,8 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(width: AppSizes.sm),
-        const Text(
-          'VacciTrack',
+        Text(
+          context.l10n.appName,
           style: TextStyle(
             fontFamily: 'Nunito',
             fontSize: AppSizes.fontXl,
@@ -280,7 +284,7 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(AppSizes.radiusFull),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withOpacity(0.04),
+            color: AppColors.textPrimary.withValues(alpha: 0.04),
             blurRadius: 8,
           ),
         ],
@@ -291,7 +295,7 @@ class _HomePageState extends State<HomePage> {
           const Icon(Icons.search, color: AppColors.textTertiary),
           const SizedBox(width: AppSizes.sm),
           Text(
-            'Search children...',
+            context.l10n.searchChildren,
             style: TextStyle(
               fontFamily: 'Nunito',
               color: AppColors.textTertiary,
@@ -305,11 +309,11 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildUpcomingCard() {
     final next = _nextDueChild;
-    final nextName = next?.name.split(' ').first ?? 'Your child';
-    final nextDose = next?.nextVaccineName ?? 'next dose';
+    final nextName = next?.name.split(' ').first ?? context.l10n.yourChildren;
+    final nextDose = next?.nextVaccineName ?? context.l10n.next;
     final dueText = next?.nextVaccineDate != null
         ? _dueLabel(next!.nextVaccineDate!)
-        : 'soon';
+        : context.l10n.soon;
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.md),
@@ -336,8 +340,8 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(width: AppSizes.sm),
-              const Text(
-                'Upcoming Vaccination',
+              Text(
+                context.l10n.upcomingVaccination,
                 style: TextStyle(
                   fontFamily: 'Nunito',
                   fontSize: AppSizes.fontLg,
@@ -352,7 +356,7 @@ class _HomePageState extends State<HomePage> {
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: '$nextName is due for ',
+                  text: '$nextName ${context.l10n.dueFor} ',
                   style: TextStyle(
                     fontFamily: 'Nunito',
                     color: AppColors.textSecondary,
@@ -368,7 +372,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 TextSpan(
-                  text: ' $dueText. Would you like to set a reminder?',
+                  text: ' $dueText. ${context.l10n.wouldYouLikeToSetReminder}',
                   style: TextStyle(
                     fontFamily: 'Nunito',
                     color: AppColors.textSecondary,
@@ -380,8 +384,8 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: AppSizes.sm),
           GestureDetector(
             onTap: () => context.push('/vaccine-schedule/$_primaryChildId'),
-            child: const Text(
-              'VIEW SCHEDULE →',
+            child: Text(
+              context.l10n.viewSchedule,
               style: TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: AppSizes.fontSm,
@@ -440,7 +444,7 @@ class _ChildCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textPrimary.withOpacity(0.04),
+              color: AppColors.textPrimary.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 2),
             ),
@@ -474,8 +478,8 @@ class _ChildCard extends StatelessWidget {
                       ),
                       const SizedBox(width: AppSizes.xs),
                       if (child.isFullyProtected)
-                        const StatusBadge(
-                          label: 'Fully\nProtected',
+                        StatusBadge(
+                          label: context.l10n.fullyProtected,
                           color: AppColors.success,
                         )
                       else if (child.nextVaccineDate != null)
@@ -503,8 +507,8 @@ class _ChildCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'PROGRESS',
+                      Text(
+                        context.l10n.progress,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontXs,
@@ -514,7 +518,7 @@ class _ChildCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${child.completedVaccines}/${child.totalVaccines} VACCINES',
+                        '${child.completedVaccines}/${child.totalVaccines} ${context.l10n.vaccines}',
                         style: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontXs,
@@ -556,14 +560,14 @@ class _ChildCard extends StatelessWidget {
                       onDelete();
                     }
                   },
-                  itemBuilder: (context) => const [
+                  itemBuilder: (context) => [
                     PopupMenuItem<String>(
                       value: 'edit',
-                      child: Text('Edit profile'),
+                      child: Text(context.l10n.editProfile),
                     ),
                     PopupMenuItem<String>(
                       value: 'delete',
-                      child: Text('Delete profile'),
+                      child: Text(context.l10n.deleteProfile),
                     ),
                   ],
                 ),

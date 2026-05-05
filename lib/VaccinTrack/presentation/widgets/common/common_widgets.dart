@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 
@@ -188,7 +189,7 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.sm, vertical: 3),
       decoration: BoxDecoration(
-        color: backgroundColor ?? color.withOpacity(0.12),
+        color: backgroundColor ?? color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppSizes.radiusFull),
       ),
       child: Text(
@@ -234,7 +235,7 @@ class SectionHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        if (trailing != null) trailing!,
+        if (trailing != null) ...[trailing!],
         if (actionLabel != null)
           GestureDetector(
             onTap: onAction,
@@ -289,7 +290,7 @@ class AppAvatar extends StatelessWidget {
                   ? Image.network(
                       imageUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildInitials(),
+                      errorBuilder: (context, error, stackTrace) => _buildInitials(),
                     )
                   : _buildInitials(),
             ),
@@ -377,7 +378,7 @@ class AppBottomNav extends StatelessWidget {
         color: AppColors.white,
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withOpacity(0.06),
+            color: AppColors.textPrimary.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -442,26 +443,26 @@ class BottomNavItem {
   });
 }
 
-const List<BottomNavItem> kMainBottomNavItems = [
+List<BottomNavItem> mainBottomNavItems(BuildContext context) => [
   BottomNavItem(
     icon: Icons.home_outlined,
     activeIcon: Icons.home,
-    label: 'Home',
+    label: context.l10n.home,
   ),
   BottomNavItem(
     icon: Icons.calendar_today_outlined,
     activeIcon: Icons.calendar_today,
-    label: 'Schedule',
+    label: context.l10n.schedule,
   ),
   BottomNavItem(
     icon: Icons.notifications_outlined,
     activeIcon: Icons.notifications,
-    label: 'Alerts',
+    label: context.l10n.alertsTitle,
   ),
   BottomNavItem(
     icon: Icons.person_outline,
     activeIcon: Icons.person,
-    label: 'Profile',
+    label: context.l10n.profile,
   ),
 ];
 

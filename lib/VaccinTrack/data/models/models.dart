@@ -33,6 +33,7 @@ class ChildModel extends ChildEntity {
     );
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,

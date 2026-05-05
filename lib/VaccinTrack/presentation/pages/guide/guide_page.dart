@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../domain/entities/guidance_article_entity.dart';
 import '../../widgets/common/common_widgets.dart';
@@ -14,10 +16,12 @@ class GuidePage extends StatefulWidget {
 }
 
 class _GuidePageState extends State<GuidePage> {
-  final List<Map<String, String>> _tabs = const [
-    {'label': 'Side Effects', 'value': 'side_effects'},
-    {'label': 'Advice', 'value': 'advice'},
-    {'label': 'Warning Signs', 'value': 'warning_signs'},
+  static const String _emergencyPhoneNumber = '1021';
+
+  List<Map<String, String>> _tabs(BuildContext context) => [
+    {'label': context.l10n.sideEffects, 'value': 'side_effects'},
+    {'label': context.l10n.advice, 'value': 'advice'},
+    {'label': context.l10n.warningSigns, 'value': 'warning_signs'},
   ];
 
   int _tabIndex = 0;
@@ -32,7 +36,7 @@ class _GuidePageState extends State<GuidePage> {
 
   Future<void> _loadArticles() async {
     setState(() => _loading = true);
-    final category = _tabs[_tabIndex]['value']!;
+    final category = _tabs(context)[_tabIndex]['value']!;
     final articles = await LocalAppStorage.instance.getGuidanceArticles(
       category: category,
     );
@@ -60,7 +64,7 @@ class _GuidePageState extends State<GuidePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Add Remark - ${article.title}',
+                '${context.l10n.addRemark} - ${article.title}',
                 style: const TextStyle(
                   fontFamily: 'Nunito',
                   fontWeight: FontWeight.w700,
@@ -70,13 +74,13 @@ class _GuidePageState extends State<GuidePage> {
               TextField(
                 controller: controller,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Write your remark...',
+                decoration: InputDecoration(
+                  hintText: context.l10n.writeYourRemark,
                 ),
               ),
               const SizedBox(height: AppSizes.sm),
               AppButton(
-                label: 'Save Remark',
+                label: context.l10n.saveRemark,
                 onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               ),
             ],
@@ -92,6 +96,16 @@ class _GuidePageState extends State<GuidePage> {
     await _loadArticles();
   }
 
+  Future<void> _callEmergency() async {
+    final uri = Uri(scheme: 'tel', path: _emergencyPhoneNumber);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.openEmergencyDialerFailed)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -101,7 +115,7 @@ class _GuidePageState extends State<GuidePage> {
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Guide & Remarks'),
+        title: Text(context.l10n.guideTitle),
       ),
       body: Column(
         children: [
@@ -112,7 +126,7 @@ class _GuidePageState extends State<GuidePage> {
               vertical: AppSizes.sm,
             ),
             child: Row(
-              children: _tabs.asMap().entries.map((entry) {
+              children: _tabs(context).asMap().entries.map((entry) {
                 final index = entry.key;
                 final tab = entry.value;
                 final active = _tabIndex == index;
@@ -158,10 +172,10 @@ class _GuidePageState extends State<GuidePage> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _articles.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'Guide unavailable right now.',
-                      style: TextStyle(
+                      context.l10n.guideUnavailable,
+                      style: const TextStyle(
                         fontFamily: 'Nunito',
                         color: AppColors.textSecondary,
                       ),
@@ -170,7 +184,7 @@ class _GuidePageState extends State<GuidePage> {
                 : ListView.separated(
                     padding: const EdgeInsets.all(AppSizes.md),
                     itemCount: _articles.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (context, index) =>
                         const SizedBox(height: AppSizes.md),
                     itemBuilder: (context, index) {
                       final article = _articles[index];
@@ -183,11 +197,67 @@ class _GuidePageState extends State<GuidePage> {
           ),
         ],
       ),
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: 2,
-        onTap: (index) =>
-            handleMainBottomNavTap(context, index: index, currentIndex: 2),
-        items: kMainBottomNavItems,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.md,
+                0,
+                AppSizes.md,
+                AppSizes.sm,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _callEmergency,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: AppColors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.md,
+                      vertical: AppSizes.md,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+                    ),
+                    elevation: 4,
+                  ),
+                  icon: const Icon(Icons.call, size: 20),
+                  label: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.callEmergency,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        '${context.l10n.emergencyHelpSubtitle} • $_emergencyPhoneNumber',
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: AppSizes.fontXs,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            AppBottomNav(
+              currentIndex: 2,
+              onTap: (index) =>
+                  handleMainBottomNavTap(context, index: index, currentIndex: 2),
+              items: mainBottomNavItems(context),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -236,7 +306,7 @@ class _GuideCard extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                '${article.remarks.length} remark(s)',
+                context.l10n.remarksCount(article.remarks.length),
                 style: const TextStyle(
                   fontFamily: 'Nunito',
                   fontSize: AppSizes.fontSm,
@@ -246,7 +316,7 @@ class _GuideCard extends StatelessWidget {
               const Spacer(),
               TextButton(
                 onPressed: onAddRemark,
-                child: const Text('Add Remark'),
+                child: Text(context.l10n.addRemark),
               ),
             ],
           ),

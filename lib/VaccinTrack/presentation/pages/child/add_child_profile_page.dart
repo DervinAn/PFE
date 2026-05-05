@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
+import '../../../core/notifications/local_notification_service.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../domain/entities/child_entity.dart';
 import '../../widgets/common/common_widgets.dart';
@@ -19,6 +21,7 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
   final _nameController = TextEditingController();
   final _notesController = TextEditingController();
   DateTime? _selectedDob;
+  String _selectedGender = 'boy';
   bool _isSaving = false;
 
   bool get _isEditMode =>
@@ -37,6 +40,7 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
     setState(() {
       _nameController.text = child.name;
       _selectedDob = child.dateOfBirth;
+      _selectedGender = child.gender == 'girl' ? 'girl' : 'boy';
     });
   }
 
@@ -64,7 +68,7 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedDob == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select date of birth')),
+        SnackBar(content: Text(context.l10n.pleaseSelectDateOfBirth)),
       );
       return;
     }
@@ -76,6 +80,7 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
           : DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameController.text.trim(),
       dateOfBirth: _selectedDob!,
+      gender: _selectedGender,
       totalVaccines: 14,
       completedVaccines: 0,
       nextVaccineDate: _selectedDob!.add(const Duration(days: 60)),
@@ -86,6 +91,7 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
     } else {
       await LocalAppStorage.instance.addChild(child);
     }
+    await LocalNotificationService.instance.resyncVaccineReminders();
     if (!mounted) return;
     setState(() => _isSaving = false);
     context.pop(true);
@@ -100,7 +106,11 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: Text(_isEditMode ? 'Edit Child Profile' : 'Child Profile'),
+        title: Text(
+          _isEditMode
+              ? context.l10n.editChildProfileTitle
+              : context.l10n.addChildProfileTitle,
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -118,8 +128,8 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Family Profiles',
+                    Text(
+                      context.l10n.familyProfiles,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontWeight: FontWeight.w800,
@@ -128,8 +138,8 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
                       ),
                     ),
                     const SizedBox(height: AppSizes.xs),
-                    const Text(
-                      'Add your child profile to generate vaccine schedule.',
+                    Text(
+                      context.l10n.addYourChildProfileToGenerateVaccineSchedule,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         color: AppColors.textSecondary,
@@ -137,39 +147,60 @@ class _AddChildProfilePageState extends State<AddChildProfilePage> {
                     ),
                     const SizedBox(height: AppSizes.lg),
                     AppTextField(
-                      label: 'Child Full Name',
-                      hint: 'Example: Leo Johnson',
+                      label: context.l10n.childFullName,
+                      hint: context.l10n.childNameExample,
                       controller: _nameController,
                       prefixIcon: const Icon(Icons.child_care_outlined),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Please enter child name';
+                          return context.l10n.enterChildName;
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: AppSizes.md),
                     AppTextField(
-                      label: 'Date Of Birth',
+                      label: context.l10n.dateOfBirth,
                       hint: _selectedDob == null
-                          ? 'Select date'
+                          ? context.l10n.selectDate
                           : '${_selectedDob!.day}/${_selectedDob!.month}/${_selectedDob!.year}',
                       readOnly: true,
                       onTap: _pickDate,
                       prefixIcon: const Icon(Icons.calendar_today_outlined),
                     ),
                     const SizedBox(height: AppSizes.md),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedGender,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.childGender,
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'boy',
+                          child: Text(context.l10n.genderBoy),
+                        ),
+                        DropdownMenuItem(
+                          value: 'girl',
+                          child: Text(context.l10n.genderGirl),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedGender = value);
+                      },
+                    ),
+                    const SizedBox(height: AppSizes.md),
                     AppTextField(
-                      label: 'Notes (optional)',
-                      hint: 'Allergies, previous doses, clinic preferences...',
+                      label: context.l10n.notesOptional,
+                      hint: context.l10n.childNotesHint,
                       controller: _notesController,
                       prefixIcon: const Icon(Icons.notes_outlined),
                     ),
                     const SizedBox(height: AppSizes.lg),
                     AppButton(
                       label: _isEditMode
-                          ? 'Update Child Profile'
-                          : 'Save Child Profile',
+                          ? context.l10n.updateChildProfile
+                          : context.l10n.saveChildProfile,
                       onPressed: _saveChild,
                       isLoading: _isSaving,
                     ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 import '../../widgets/common/common_widgets.dart';
@@ -17,7 +18,6 @@ class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _agreedToTerms = false;
@@ -40,9 +40,10 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   String get _strengthLabel {
-    if (_passwordStrength < 0.34) return 'Weak';
-    if (_passwordStrength < 0.67) return 'Medium';
-    return 'Strong';
+    final l10n = AppLocaleController.instance.l10n;
+    if (_passwordStrength < 0.34) return l10n.weak;
+    if (_passwordStrength < 0.67) return l10n.medium;
+    return l10n.strong;
   }
 
   Color get _strengthColor {
@@ -55,7 +56,7 @@ class _SignupPageState extends State<SignupPage> {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please agree to Terms & Conditions')),
+        SnackBar(content: Text(context.l10n.pleaseAgreeToTermsAndConditions)),
       );
       return;
     }
@@ -65,8 +66,8 @@ class _SignupPageState extends State<SignupPage> {
     if (emailTaken) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This email already exists. Please login instead.'),
+        SnackBar(
+          content: Text(context.l10n.thisEmailAlreadyExistsPleaseLoginInstead),
         ),
       );
       return;
@@ -75,7 +76,6 @@ class _SignupPageState extends State<SignupPage> {
     await LocalAppStorage.instance.saveUser(
       fullName: _nameController.text.trim(),
       email: _emailController.text.trim(),
-      phone: _phoneController.text.trim(),
       password: _passwordController.text,
     );
     await LocalAppStorage.instance.setOnboardingCompleted(true);
@@ -89,7 +89,6 @@ class _SignupPageState extends State<SignupPage> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -108,7 +107,7 @@ class _SignupPageState extends State<SignupPage> {
               borderRadius: BorderRadius.circular(AppSizes.radiusXl),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.textPrimary.withOpacity(0.05),
+                  color: AppColors.textPrimary.withValues(alpha: 0.05),
                   blurRadius: 20,
                 ),
               ],
@@ -129,11 +128,11 @@ class _SignupPageState extends State<SignupPage> {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Center(
                           child: Text(
-                            'Create Account',
-                            style: TextStyle(
+                            context.l10n.createAccount,
+                            style: const TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: AppSizes.fontXl,
                               fontWeight: FontWeight.w700,
@@ -160,8 +159,8 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                   ),
                   const SizedBox(height: AppSizes.md),
-                  const Text(
-                    'Join VacciTrack',
+                  Text(
+                    context.l10n.joinVacciTrack,
                     style: TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: AppSizes.fontXxl,
@@ -170,8 +169,8 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                   ),
                   const SizedBox(height: AppSizes.xs),
-                  const Text(
-                    AppStrings.signupSubtitle,
+                  Text(
+                    context.l10n.signupSubtitle,
                     style: TextStyle(
                       fontFamily: 'Nunito',
                       color: AppColors.textSecondary,
@@ -181,7 +180,7 @@ class _SignupPageState extends State<SignupPage> {
 
                   // Full Name
                   AppTextField(
-                    label: 'Full Name',
+                    label: context.l10n.fullName,
                     hint: 'John Doe',
                     controller: _nameController,
                     prefixIcon: const Icon(
@@ -189,13 +188,13 @@ class _SignupPageState extends State<SignupPage> {
                       color: AppColors.textTertiary,
                     ),
                     validator: (v) =>
-                        v?.isEmpty == true ? 'Enter your name' : null,
+                        v?.isEmpty == true ? context.l10n.enterYourName : null,
                   ),
                   const SizedBox(height: AppSizes.md),
 
                   // Email
                   AppTextField(
-                    label: 'Email Address',
+                    label: context.l10n.emailAddress,
                     hint: 'email@example.com',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -203,34 +202,24 @@ class _SignupPageState extends State<SignupPage> {
                       Icons.email_outlined,
                       color: AppColors.textTertiary,
                     ),
-                    validator: (v) => v?.isEmpty == true ? 'Enter email' : null,
-                  ),
-                  const SizedBox(height: AppSizes.md),
-
-                  // Phone
-                  AppTextField(
-                    label: 'Phone Number',
-                    hint: '+1 (555) 000-0000',
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    prefixIcon: const Icon(
-                      Icons.phone_outlined,
-                      color: AppColors.textTertiary,
-                    ),
+                    validator: (v) => v?.isEmpty == true
+                        ? context.l10n.enterYourEmailAddress
+                        : null,
                   ),
                   const SizedBox(height: AppSizes.md),
 
                   // Password
                   AppTextField(
-                    label: 'Password',
+                    label: context.l10n.password,
                     controller: _passwordController,
                     isPassword: true,
                     prefixIcon: const Icon(
                       Icons.lock_outline,
                       color: AppColors.textTertiary,
                     ),
-                    validator: (v) =>
-                        v != null && v.length < 8 ? 'Min 8 characters' : null,
+                    validator: (v) => v != null && v.length < 8
+                        ? context.l10n.use8PlusCharactersWithSymbols
+                        : null,
                   ),
                   const SizedBox(height: AppSizes.sm),
                   // Strength bar
@@ -248,8 +237,8 @@ class _SignupPageState extends State<SignupPage> {
                     RichText(
                       text: TextSpan(
                         children: [
-                          const TextSpan(
-                            text: 'Strength: ',
+                          TextSpan(
+                            text: '${context.l10n.strength}: ',
                             style: TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: AppSizes.fontSm,
@@ -265,8 +254,9 @@ class _SignupPageState extends State<SignupPage> {
                               color: _strengthColor,
                             ),
                           ),
-                          const TextSpan(
-                            text: '. Use 8+ characters with symbols.',
+                          TextSpan(
+                            text:
+                                '. ${context.l10n.use8PlusCharactersWithSymbols}',
                             style: TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: AppSizes.fontSm,
@@ -281,7 +271,7 @@ class _SignupPageState extends State<SignupPage> {
 
                   // Confirm Password
                   AppTextField(
-                    label: 'Confirm Password',
+                    label: context.l10n.confirmPassword,
                     controller: _confirmController,
                     isPassword: true,
                     prefixIcon: const Icon(
@@ -289,7 +279,7 @@ class _SignupPageState extends State<SignupPage> {
                       color: AppColors.textTertiary,
                     ),
                     validator: (v) => v != _passwordController.text
-                        ? 'Passwords do not match'
+                        ? context.l10n.passwordsDoNotMatch
                         : null,
                   ),
                   const SizedBox(height: AppSizes.md),
@@ -313,17 +303,17 @@ class _SignupPageState extends State<SignupPage> {
                         child: Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: RichText(
-                            text: const TextSpan(
+                            text: TextSpan(
                               children: [
                                 TextSpan(
-                                  text: 'I agree to the ',
+                                  text: context.l10n.agreeToThe,
                                   style: TextStyle(
                                     fontFamily: 'Nunito',
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
                                 TextSpan(
-                                  text: 'Terms & Conditions',
+                                  text: context.l10n.termsAndConditions,
                                   style: TextStyle(
                                     fontFamily: 'Nunito',
                                     color: AppColors.primary,
@@ -331,14 +321,14 @@ class _SignupPageState extends State<SignupPage> {
                                   ),
                                 ),
                                 TextSpan(
-                                  text: ' and ',
+                                  text: context.l10n.andWord,
                                   style: TextStyle(
                                     fontFamily: 'Nunito',
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
                                 TextSpan(
-                                  text: 'Privacy Policy',
+                                  text: context.l10n.privacyPolicy,
                                   style: TextStyle(
                                     fontFamily: 'Nunito',
                                     color: AppColors.primary,
@@ -362,7 +352,7 @@ class _SignupPageState extends State<SignupPage> {
                   const SizedBox(height: AppSizes.lg),
 
                   AppButton(
-                    label: 'Create Account',
+                    label: context.l10n.createAccount,
                     onPressed: _signup,
                     isLoading: _isLoading,
                     icon: const Icon(
@@ -375,8 +365,8 @@ class _SignupPageState extends State<SignupPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Already have an account? ',
+                      Text(
+                        context.l10n.alreadyHaveAccount,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           color: AppColors.textSecondary,
@@ -384,8 +374,8 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                       GestureDetector(
                         onTap: () => context.pop(),
-                        child: const Text(
-                          'Log in',
+                        child: Text(
+                          context.l10n.logIn,
                           style: TextStyle(
                             fontFamily: 'Nunito',
                             fontWeight: FontWeight.w700,
@@ -406,7 +396,7 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                       const SizedBox(width: AppSizes.xs),
                       Text(
-                        'Secure 256-bit encryption active',
+                        context.l10n.secureEncryptionActive,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontXs,

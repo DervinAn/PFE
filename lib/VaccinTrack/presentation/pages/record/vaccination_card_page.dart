@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../domain/entities/user_entity.dart';
 import '../../widgets/common/common_widgets.dart';
@@ -15,7 +16,7 @@ class VaccinationCardPage extends StatelessWidget {
   final String childId;
   const VaccinationCardPage({super.key, required this.childId});
 
-  Future<Map<String, dynamic>> _loadCardData() async {
+  Future<Map<String, dynamic>> _loadCardData(AppLocalizations l10n) async {
     final child = await LocalAppStorage.instance.getChildById(childId);
     final records = await LocalAppStorage.instance.getVaccinationHistory(
       childId: childId,
@@ -26,7 +27,7 @@ class VaccinationCardPage extends StatelessWidget {
         : null;
 
     return {
-      'childName': child?.name ?? 'Unknown Child',
+      'childName': child?.name ?? l10n.unknownChild,
       'dob': child?.dateOfBirth,
       'records': records,
       'lastUpdated': lastUpdated,
@@ -38,8 +39,8 @@ class VaccinationCardPage extends StatelessWidget {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  Future<Uint8List> _buildPdfBytes() async {
-    final data = await _loadCardData();
+  Future<Uint8List> _buildPdfBytes(AppLocalizations l10n) async {
+    final data = await _loadCardData(l10n);
     final childName = data['childName'] as String;
     final dob = data['dob'] as DateTime?;
     final records = data['records'] as List<VaccinationRecordEntity>;
@@ -47,7 +48,7 @@ class VaccinationCardPage extends StatelessWidget {
 
     final tableData = records.isEmpty
         ? [
-            ['No vaccination records yet', '-', '-', '-', '-'],
+            [l10n.noVaccinationRecordsYet, '-', '-', '-', '-'],
           ]
         : records.map((r) {
             return [
@@ -65,16 +66,22 @@ class VaccinationCardPage extends StatelessWidget {
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
           pw.Text(
-            'VacciTrack - Vaccination Card',
+            '${l10n.appName} - ${l10n.vaccinationCardTitle}',
             style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
-          pw.Text('Child: $childName'),
-          pw.Text('DOB: ${dob != null ? _dateLabel(dob) : 'Unknown'}'),
-          pw.Text('Record ID: $recordId'),
+          pw.Text('${l10n.child}: $childName'),
+          pw.Text('${l10n.dob}: ${dob != null ? _dateLabel(dob) : l10n.notSpecified}'),
+          pw.Text('${l10n.recordId}: $recordId'),
           pw.SizedBox(height: 16),
           pw.TableHelper.fromTextArray(
-            headers: ['Vaccine', 'Dose', 'Date', 'Clinic', 'Notes'],
+            headers: [
+              l10n.vaccine,
+              l10n.dose,
+              l10n.date,
+              l10n.clinic,
+              l10n.notesShort,
+            ],
             data: tableData,
           ),
         ],
@@ -85,19 +92,19 @@ class VaccinationCardPage extends StatelessWidget {
 
   Future<void> _printCard(BuildContext context) async {
     try {
-      final bytes = await _buildPdfBytes();
+      final bytes = await _buildPdfBytes(context.l10n);
       await Printing.layoutPdf(onLayout: (_) async => bytes);
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to print vaccination card')),
+        SnackBar(content: Text(context.l10n.failedToPrintVaccinationCard)),
       );
     }
   }
 
   Future<void> _sharePdf(BuildContext context) async {
     try {
-      final bytes = await _buildPdfBytes();
+      final bytes = await _buildPdfBytes(context.l10n);
       await Printing.sharePdf(
         bytes: bytes,
         filename: 'vaccination_card_$childId.pdf',
@@ -105,7 +112,7 @@ class VaccinationCardPage extends StatelessWidget {
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to export vaccination card')),
+        SnackBar(content: Text(context.l10n.failedToExportVaccinationCard)),
       );
     }
   }
@@ -130,22 +137,22 @@ class VaccinationCardPage extends StatelessWidget {
     return AppColors.primary;
   }
 
-  String _statusLabel(String status) {
+  String _statusLabel(String status, AppLocalizations l10n) {
     final s = status.toLowerCase();
-    if (s.contains('administered')) return 'DONE';
-    if (s.contains('complete')) return 'DONE';
-    if (s.contains('overdue')) return 'OVERDUE';
-    if (s.contains('due')) return 'DUE';
+    if (s.contains('administered')) return l10n.doneStatus;
+    if (s.contains('complete')) return l10n.completed.toUpperCase();
+    if (s.contains('overdue')) return l10n.overdueStatus;
+    if (s.contains('due')) return l10n.dueStatus;
     return status.toUpperCase();
   }
 
-  List<Widget> _recordRows(List<VaccinationRecordEntity> records) {
+  List<Widget> _recordRows(List<VaccinationRecordEntity> records, AppLocalizations l10n) {
     if (records.isEmpty) {
-      return const [
+      return [
         Padding(
           padding: EdgeInsets.all(AppSizes.md),
           child: Text(
-            'No vaccination records yet.',
+            l10n.noVaccinationRecordsYet,
             style: TextStyle(
               fontFamily: 'Nunito',
               color: AppColors.textSecondary,
@@ -156,7 +163,7 @@ class VaccinationCardPage extends StatelessWidget {
     }
 
     return records.map((r) {
-      final status = _statusLabel(r.status);
+      final status = _statusLabel(r.status, l10n);
       return Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSizes.md,
@@ -180,7 +187,7 @@ class VaccinationCardPage extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Lot: ${r.lotNumber ?? '-'}',
+                    '${l10n.lotLabel}: ${r.lotNumber ?? '-'}',
                     style: const TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: AppSizes.fontXs,
@@ -243,7 +250,7 @@ class VaccinationCardPage extends StatelessWidget {
     }).toList();
   }
 
-  Widget _buildCard(Map<String, dynamic> data) {
+  Widget _buildCard(Map<String, dynamic> data, AppLocalizations l10n) {
     final childName = data['childName'] as String;
     final dob = data['dob'] as DateTime?;
     final lastUpdated = data['lastUpdated'] as DateTime?;
@@ -268,8 +275,8 @@ class VaccinationCardPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'PATIENT NAME',
+                      Text(
+                        l10n.patientName,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontXs,
@@ -287,7 +294,7 @@ class VaccinationCardPage extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'ID: $recordId • DOB: ${dob != null ? _dateLabel(dob) : 'Unknown'}',
+                        '${l10n.recordId}: $recordId • ${l10n.dob}: ${dob != null ? _dateLabel(dob) : l10n.notSpecified}',
                         style: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontSm,
@@ -296,16 +303,16 @@ class VaccinationCardPage extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSizes.xs),
                       Row(
-                        children: const [
-                          Icon(
+                        children: [
+                          const Icon(
                             Icons.verified,
                             color: Colors.greenAccent,
                             size: 14,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
-                            'VACCITRACK VERIFIED',
-                            style: TextStyle(
+                            l10n.vacciTrackVerified,
+                            style: const TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: AppSizes.fontXs,
                               fontWeight: FontWeight.w700,
@@ -316,7 +323,7 @@ class VaccinationCardPage extends StatelessWidget {
                         ],
                       ),
                       Text(
-                        'Last Updated: ${lastUpdated != null ? _dateLabel(lastUpdated) : '-'}',
+                        '${l10n.lastUpdatedLabel}: ${lastUpdated != null ? _dateLabel(lastUpdated) : '-'}',
                         style: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontXs,
@@ -368,11 +375,11 @@ class VaccinationCardPage extends StatelessWidget {
                     AppSizes.sm,
                   ),
                   child: Row(
-                    children: const [
+                    children: [
                       Expanded(
                         flex: 3,
                         child: Text(
-                          'VACCINE NAME',
+                          l10n.vaccineNameHeader,
                           style: TextStyle(
                             fontFamily: 'Nunito',
                             fontSize: AppSizes.fontXs,
@@ -385,7 +392,7 @@ class VaccinationCardPage extends StatelessWidget {
                       Expanded(
                         flex: 3,
                         child: Text(
-                          'DATE ADMINISTERED',
+                          l10n.dateAdministeredHeader,
                           style: TextStyle(
                             fontFamily: 'Nunito',
                             fontSize: AppSizes.fontXs,
@@ -398,7 +405,7 @@ class VaccinationCardPage extends StatelessWidget {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          'DOSE',
+                          l10n.doseHeader,
                           style: TextStyle(
                             fontFamily: 'Nunito',
                             fontSize: AppSizes.fontXs,
@@ -412,15 +419,15 @@ class VaccinationCardPage extends StatelessWidget {
                   ),
                 ),
                 const Divider(height: 1),
-                ..._recordRows(records),
+                ..._recordRows(records, l10n),
                 const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.all(AppSizes.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'PROVIDER INFORMATION',
+                      Text(
+                        l10n.providerInformation,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontXs,
@@ -432,8 +439,8 @@ class VaccinationCardPage extends StatelessWidget {
                       const SizedBox(height: AppSizes.xs),
                       Text(
                         records.isNotEmpty
-                            ? (records.first.clinicName ?? 'Not specified')
-                            : 'Not specified',
+                            ? (records.first.clinicName ?? l10n.notSpecified)
+                            : l10n.notSpecified,
                         style: const TextStyle(
                           fontFamily: 'Nunito',
                           fontWeight: FontWeight.w700,
@@ -441,8 +448,8 @@ class VaccinationCardPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: AppSizes.md),
-                      const Text(
-                        'AUTHENTICATOR SEAL',
+                      Text(
+                        l10n.authenticatorSeal,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: AppSizes.fontXs,
@@ -470,9 +477,9 @@ class VaccinationCardPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: AppSizes.sm),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'This document is generated from local vaccination records saved in VacciTrack.',
+                              l10n.documentGeneratedFromLocalVaccinationRecordsSavedInVacciTrack,
                               style: TextStyle(
                                 fontFamily: 'Nunito',
                                 fontSize: AppSizes.fontXs,
@@ -495,6 +502,7 @@ class VaccinationCardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -502,10 +510,10 @@ class VaccinationCardPage extends StatelessWidget {
           onTap: () => context.pop(),
           child: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Vaccination Card'),
+        title: Text(l10n.vaccinationCardTitle),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
-        future: _loadCardData(),
+        future: _loadCardData(l10n),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
@@ -513,9 +521,9 @@ class VaccinationCardPage extends StatelessWidget {
 
           final data = snapshot.data;
           if (data == null) {
-            return const Center(
+            return Center(
               child: Text(
-                'Unable to load vaccination card',
+                l10n.unableToLoadVaccinationCard,
                 style: TextStyle(
                   fontFamily: 'Nunito',
                   color: AppColors.textSecondary,
@@ -531,8 +539,8 @@ class VaccinationCardPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Official Health Record',
+                Text(
+                  l10n.officialHealthRecord,
                   style: TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: AppSizes.fontXxl,
@@ -541,18 +549,18 @@ class VaccinationCardPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSizes.xs),
-                const Text(
-                  'Verified digital copy of immunization history',
+                Text(
+                  l10n.verifiedDigitalCopyOfImmunizationHistory,
                   style: TextStyle(
                     fontFamily: 'Nunito',
                     color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: AppSizes.lg),
-                _buildCard(data),
+                _buildCard(data, l10n),
                 const SizedBox(height: AppSizes.lg),
                 AppButton(
-                  label: 'Print Card',
+                  label: l10n.printCard,
                   onPressed: () => _printCard(context),
                   icon: const Icon(
                     Icons.print_outlined,
@@ -562,7 +570,7 @@ class VaccinationCardPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSizes.sm),
                 AppButton(
-                  label: 'Share PDF',
+                  label: l10n.sharePdf,
                   onPressed: () => _sharePdf(context),
                   isOutlined: true,
                   icon: const Icon(
@@ -573,7 +581,7 @@ class VaccinationCardPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSizes.sm),
                 AppButton(
-                  label: 'Save to Wallet',
+                  label: l10n.saveToWallet,
                   onPressed: () => _sharePdf(context),
                   isOutlined: true,
                   backgroundColor: AppColors.textPrimary,
@@ -604,17 +612,17 @@ class VaccinationCardPage extends StatelessWidget {
                         child: RichText(
                           text: TextSpan(
                             children: [
-                              const TextSpan(
-                                text: 'Need an official stamp?\n',
+                              TextSpan(
+                                text: '${l10n.needAnOfficialStamp}\n',
                                 style: TextStyle(
                                   fontFamily: 'Nunito',
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
-                              const TextSpan(
+                              TextSpan(
                                 text:
-                                    'This digital card is accepted by most schools and travel authorities. If you require a wet-ink signature, please visit your clinic and provide your Record ID: ',
+                                    '${l10n.acceptedByMostSchoolsAndTravelAuthorities} ${l10n.pleaseVisitYourClinicAndProvideYourRecordId} ',
                                 style: TextStyle(
                                   fontFamily: 'Nunito',
                                   fontSize: AppSizes.fontSm,
@@ -655,7 +663,7 @@ class VaccinationCardPage extends StatelessWidget {
         currentIndex: 0,
         onTap: (index) =>
             handleMainBottomNavTap(context, index: index, currentIndex: 0),
-        items: kMainBottomNavItems,
+        items: mainBottomNavItems(context),
       ),
     );
   }

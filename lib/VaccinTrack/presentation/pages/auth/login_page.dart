@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 import '../../widgets/common/common_widgets.dart';
@@ -39,13 +40,110 @@ class _LoginPageState extends State<LoginPage> {
       context.go(AppRoutes.home);
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Invalid credentials or no local account found. Please sign up first.',
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.invalidCredentials)));
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController(text: _emailController.text);
+    final newPasswordController = TextEditingController();
+    final confirmController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.forgotPasswordTitle),
+        contentPadding: const EdgeInsets.fromLTRB(
+          AppSizes.lg,
+          AppSizes.lg,
+          AppSizes.lg,
+          AppSizes.sm,
         ),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.l10n.forgotPasswordSubtitle,
+                  style: const TextStyle(fontFamily: 'Nunito'),
+                ),
+                const SizedBox(height: AppSizes.md),
+                TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.emailAddress,
+                  ),
+                  validator: (value) => value?.trim().isEmpty == true
+                      ? context.l10n.enterYourEmail
+                      : null,
+                ),
+                const SizedBox(height: AppSizes.sm),
+                TextFormField(
+                  controller: newPasswordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.newPassword,
+                  ),
+                  validator: (value) => value == null || value.length < 8
+                      ? context.l10n.use8PlusCharactersWithSymbols
+                      : null,
+                ),
+                const SizedBox(height: AppSizes.sm),
+                TextFormField(
+                  controller: confirmController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.confirmPassword,
+                  ),
+                  validator: (value) => value != newPasswordController.text
+                      ? context.l10n.passwordsDoNotMatch
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final valid = formKey.currentState?.validate() ?? false;
+              if (!valid) return;
+              final l10n = context.l10n;
+              final messenger = ScaffoldMessenger.of(context);
+              final updated = await LocalAppStorage.instance.updatePassword(
+                email: emailController.text,
+                newPassword: newPasswordController.text,
+              );
+              if (!updated) {
+                if (!ctx.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(content: Text(l10n.emailNotFound)),
+                );
+                return;
+              }
+              if (!ctx.mounted) return;
+              Navigator.pop(ctx, true);
+            },
+            child: Text(context.l10n.resetPassword),
+          ),
+        ],
       ),
     );
+
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.passwordUpdated)));
+    }
   }
 
   @override
@@ -69,7 +167,7 @@ class _LoginPageState extends State<LoginPage> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusXl),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.textPrimary.withOpacity(0.05),
+                        color: AppColors.textPrimary.withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 4),
                       ),
@@ -81,9 +179,9 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Welcome back',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.welcomeBack,
+                          style: const TextStyle(
                             fontFamily: 'Nunito',
                             fontSize: AppSizes.fontXxl,
                             fontWeight: FontWeight.w800,
@@ -98,32 +196,34 @@ class _LoginPageState extends State<LoginPage> {
                             fontFamily: 'Nunito',
                             color: AppColors.textPrimary,
                           ),
-                          validator: (v) =>
-                              v?.isEmpty == true ? 'Enter your email' : null,
-                          decoration: const InputDecoration(
-                            hintText: 'Email address',
+                          validator: (v) => v?.isEmpty == true
+                              ? context.l10n.enterYourEmail
+                              : null,
+                          decoration: InputDecoration(
+                            hintText: context.l10n.emailAddress,
                           ),
                         ),
                         const SizedBox(height: AppSizes.md),
                         AppTextField(
                           label: '',
-                          hint: 'Password',
+                          hint: context.l10n.password,
                           controller: _passwordController,
                           isPassword: true,
-                          validator: (v) =>
-                              v?.isEmpty == true ? 'Enter your password' : null,
+                          validator: (v) => v?.isEmpty == true
+                              ? context.l10n.enterYourPassword
+                              : null,
                         ),
                         const SizedBox(height: AppSizes.sm),
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {},
-                            child: const Text('Forgot password?'),
+                            onPressed: _showForgotPasswordDialog,
+                            child: Text(context.l10n.forgotPassword),
                           ),
                         ),
                         const SizedBox(height: AppSizes.sm),
                         AppButton(
-                          label: 'Login',
+                          label: context.l10n.login,
                           onPressed: _login,
                           isLoading: _isLoading,
                         ),
@@ -138,7 +238,7 @@ class _LoginPageState extends State<LoginPage> {
                                 horizontal: AppSizes.md,
                               ),
                               child: Text(
-                                'Or continue with',
+                                context.l10n.orContinueWith,
                                 style: TextStyle(
                                   fontFamily: 'Nunito',
                                   fontSize: AppSizes.fontSm,
@@ -155,17 +255,17 @@ class _LoginPageState extends State<LoginPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text(
-                              "Don't have an account? ",
-                              style: TextStyle(
+                            Text(
+                              context.l10n.dontHaveAccount,
+                              style: const TextStyle(
                                 fontFamily: 'Nunito',
                                 color: AppColors.textSecondary,
                               ),
                             ),
                             GestureDetector(
                               onTap: () => context.push(AppRoutes.signup),
-                              child: const Text(
-                                'Sign up',
+                              child: Text(
+                                context.l10n.signUp,
                                 style: TextStyle(
                                   fontFamily: 'Nunito',
                                   fontWeight: FontWeight.w700,
@@ -177,22 +277,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSizes.xl),
-              // Decorative card at bottom
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
-                child: Container(
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFB8D4F0), Color(0xFF8BB8E8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusLg),
                   ),
                 ),
               ),
@@ -230,8 +314,8 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         const SizedBox(height: AppSizes.md),
-        const Text(
-          'VacciTrack',
+        Text(
+          context.l10n.appName,
           style: TextStyle(
             fontFamily: 'Nunito',
             fontSize: AppSizes.fontXxl,
@@ -240,8 +324,8 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         const SizedBox(height: AppSizes.xs),
-        const Text(
-          'Manage your health records securely',
+        Text(
+          context.l10n.manageYourHealthRecordsSecurely,
           style: TextStyle(
             fontFamily: 'Nunito',
             fontSize: AppSizes.fontMd,

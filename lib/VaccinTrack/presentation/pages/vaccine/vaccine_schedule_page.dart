@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 import '../../../domain/entities/child_entity.dart';
@@ -17,11 +18,11 @@ class VaccineSchedulePage extends StatefulWidget {
 }
 
 class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
-  final List<Map<String, String>> _filters = const [
-    {'label': 'All Vaccines', 'value': 'all'},
-    {'label': 'Mandatory', 'value': 'mandatory'},
-    {'label': 'Optional', 'value': 'optional'},
-    {'label': 'Travel', 'value': 'travel'},
+  static const List<String> _filterValues = [
+    'all',
+    'mandatory',
+    'optional',
+    'travel',
   ];
 
   int _selectedFilter = 0;
@@ -54,7 +55,7 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
     if (!exists) _activeChildId = children.first.id;
     await LocalAppStorage.instance.setActiveChildId(_activeChildId);
     final child = children.firstWhere((c) => c.id == _activeChildId);
-    final filter = _filters[_selectedFilter]['value']!;
+    final filter = _filterValues[_selectedFilter];
     final schedule = await LocalAppStorage.instance.getComputedSchedule(
       _activeChildId,
       filter: filter,
@@ -110,12 +111,13 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
           currentIndex: 1,
           preferredChildId: _activeChildId,
         ),
-        items: kMainBottomNavItems,
+        items: mainBottomNavItems(context),
       ),
     );
   }
 
   Widget _buildNoChildState() {
+    final l10n = context.l10n;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.lg),
@@ -128,8 +130,8 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
               color: AppColors.primary,
             ),
             const SizedBox(height: AppSizes.sm),
-            const Text(
-              'No child profile found',
+            Text(
+              l10n.noChildProfileFound,
               style: TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: AppSizes.fontXl,
@@ -137,8 +139,8 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
               ),
             ),
             const SizedBox(height: AppSizes.xs),
-            const Text(
-              'Add a child profile first to generate the vaccination calendar.',
+            Text(
+              l10n.addChildProfileFirstToGenerateTheVaccinationCalendar,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Nunito',
@@ -147,7 +149,7 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
             ),
             const SizedBox(height: AppSizes.md),
             AppButton(
-              label: 'Add Child Profile',
+              label: l10n.addChildProfile,
               onPressed: () => context.push(AppRoutes.addChildProfile),
             ),
           ],
@@ -158,6 +160,13 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
 
   Widget _buildContent() {
     final child = _child!;
+    final l10n = context.l10n;
+    final filterLabels = [
+      l10n.allVaccines,
+      l10n.mandatory,
+      l10n.optional,
+      l10n.travel,
+    ];
     return Column(
       children: [
         Container(
@@ -177,10 +186,10 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
                   child: const Icon(Icons.arrow_back, size: 18),
                 ),
               ),
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Text(
-                    'Vaccination Calendar',
+                    l10n.vaccinationCalendar,
                     style: TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: AppSizes.fontXl,
@@ -226,7 +235,7 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
                               ),
                               const SizedBox(height: AppSizes.xs),
                               Text(
-                                '${child.ageDisplay} old',
+                                child.ageDisplay,
                                 style: const TextStyle(
                                   fontFamily: 'Nunito',
                                   color: AppColors.textSecondary,
@@ -245,9 +254,9 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
                   child: Row(
-                    children: _filters.asMap().entries.map((entry) {
+                    children: _filterValues.asMap().entries.map((entry) {
                       final index = entry.key;
-                      final f = entry.value;
+                      final label = filterLabels[index];
                       final isActive = index == _selectedFilter;
                       return GestureDetector(
                         onTap: () {
@@ -274,7 +283,7 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
                             ),
                           ),
                           child: Text(
-                            f['label']!,
+                            label,
                             style: TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: AppSizes.fontSm,
@@ -301,8 +310,8 @@ class _VaccineSchedulePageState extends State<VaccineSchedulePage> {
                         color: AppColors.white,
                         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
                       ),
-                      child: const Text(
-                        'No doses available for this filter.',
+                      child: Text(
+                        l10n.noDosesAvailableForThisFilter,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           color: AppColors.textSecondary,
@@ -342,18 +351,18 @@ class _TimelineGroup extends StatelessWidget {
     required this.onConfirm,
   });
 
-  String _statusLabel(VaccineEntity vaccine) {
-    if (vaccine.windowMissed) return 'MISSED WINDOW';
+  String _statusLabel(AppLocalizations l10n, VaccineEntity vaccine) {
+    if (vaccine.windowMissed) return l10n.missedWindow;
     final s = vaccine.status;
     switch (s) {
       case VaccineStatus.done:
-        return 'DONE';
+        return l10n.doneStatus;
       case VaccineStatus.overdue:
-        return 'OVERDUE';
+        return l10n.overdueStatus;
       case VaccineStatus.dueSoon:
-        return 'DUE SOON';
+        return l10n.dueSoonStatus;
       case VaccineStatus.upcoming:
-        return 'UPCOMING';
+        return l10n.upcomingStatus;
       default:
         return '';
     }
@@ -378,6 +387,7 @@ class _TimelineGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSizes.md,
@@ -464,7 +474,7 @@ class _TimelineGroup extends StatelessWidget {
                               Icon(_statusIcon(v), color: color, size: 18),
                               const SizedBox(height: 2),
                               Text(
-                                _statusLabel(v),
+                                _statusLabel(l10n, v),
                                 style: TextStyle(
                                   fontFamily: 'Nunito',
                                   fontSize: AppSizes.fontXs,
@@ -482,7 +492,7 @@ class _TimelineGroup extends StatelessWidget {
                                       vertical: 0,
                                     ),
                                   ),
-                                  child: const Text('Confirm'),
+                                  child: Text(l10n.confirm),
                                 ),
                             ],
                           ),

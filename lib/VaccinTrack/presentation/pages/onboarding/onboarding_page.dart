@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 import '../../widgets/common/common_widgets.dart';
@@ -16,27 +17,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<_OnboardingData> _pages = [
-    _OnboardingData(
-      icon: Icons.child_care_rounded,
-      backgroundColor: const Color(0xFFFFF3E0),
-      title: AppStrings.onboarding1Title,
-      description: AppStrings.onboarding1Desc,
-    ),
-    _OnboardingData(
-      icon: Icons.notifications_active_rounded,
-      backgroundColor: const Color(0xFFE8F5E9),
-      title: AppStrings.onboarding2Title,
-      description: AppStrings.onboarding2Desc,
-    ),
-    _OnboardingData(
-      icon: Icons.verified_rounded,
-      backgroundColor: const Color(0xFFE3F2FD),
-      title: AppStrings.onboarding3Title,
-      description: AppStrings.onboarding3Desc,
-    ),
-  ];
-
   @override
   void dispose() {
     _pageController.dispose();
@@ -50,7 +30,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   void _nextPage() {
-    if (_currentPage < _pages.length - 1) {
+    if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
@@ -62,6 +42,27 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      _OnboardingData(
+        icon: Icons.child_care_rounded,
+        backgroundColor: const Color(0xFFFFF3E0),
+        title: context.l10n.onboarding1Title,
+        description: context.l10n.onboarding1Desc,
+      ),
+      _OnboardingData(
+        icon: Icons.notifications_active_rounded,
+        backgroundColor: const Color(0xFFE8F5E9),
+        title: context.l10n.onboarding2Title,
+        description: context.l10n.onboarding2Desc,
+      ),
+      _OnboardingData(
+        icon: Icons.verified_rounded,
+        backgroundColor: const Color(0xFFE3F2FD),
+        title: context.l10n.onboarding3Title,
+        description: context.l10n.onboarding3Desc,
+      ),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -74,8 +75,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 padding: const EdgeInsets.all(AppSizes.md),
                 child: TextButton(
                   onPressed: _finishOnboarding,
-                  child: const Text(
-                    'Skip',
+                  child: Text(
+                    context.l10n.skip,
                     style: TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: AppSizes.fontLg,
@@ -91,10 +92,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _pages.length,
+                itemCount: pages.length,
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 itemBuilder: (context, index) {
-                  return _OnboardingSlide(data: _pages[index]);
+                  return _OnboardingSlide(data: pages[index]);
                 },
               ),
             ),
@@ -102,7 +103,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             // Indicators
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_pages.length, (i) {
+              children: List.generate(pages.length, (i) {
                 final isActive = i == _currentPage;
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
@@ -112,7 +113,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   decoration: BoxDecoration(
                     color: isActive
                         ? AppColors.primary
-                        : AppColors.textTertiary.withOpacity(0.4),
+                        : AppColors.textTertiary.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                   ),
                 );
@@ -130,9 +131,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 AppSizes.xl,
               ),
               child: AppButton(
-                label: _currentPage == _pages.length - 1
-                    ? 'Get Started'
-                    : 'Next',
+                label: _currentPage == pages.length - 1
+                    ? context.l10n.getStarted
+                    : context.l10n.next,
                 onPressed: _nextPage,
               ),
             ),
@@ -167,7 +168,7 @@ class _OnboardingSlide extends StatelessWidget {
                 child: Icon(
                   data.icon,
                   size: 120,
-                  color: AppColors.primary.withOpacity(0.8),
+                  color: AppColors.primary.withValues(alpha: 0.8),
                 ),
               ),
             ),

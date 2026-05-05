@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 
@@ -16,14 +17,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _progressAnimation;
   late Animation<double> _fadeAnimation;
-  String _loadingText = 'Initializing secure vault...';
-
-  final List<String> _loadingSteps = [
-    'Initializing secure vault...',
-    'Loading health records...',
-    'Syncing vaccine schedule...',
-    'Almost ready...',
-  ];
+  String _loadingText = AppLocaleController.instance.l10n.initializingVault;
 
   @override
   void initState() {
@@ -49,16 +43,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
     _progressController.addListener(() {
       final v = _progressController.value;
-      String text;
-      if (v < 0.3) {
-        text = _loadingSteps[0];
-      } else if (v < 0.6) {
-        text = _loadingSteps[1];
-      } else if (v < 0.85) {
-        text = _loadingSteps[2];
-      } else {
-        text = _loadingSteps[3];
-      }
+      final text = _loadingTextForProgress(v);
       if (text != _loadingText) {
         setState(() => _loadingText = text);
       }
@@ -69,6 +54,20 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
         _resolveInitialRoute();
       });
     });
+  }
+
+  String _loadingTextForProgress(double value) {
+    final l10n = AppLocaleController.instance.l10n;
+    if (value < 0.3) {
+      return l10n.initializingVault;
+    }
+    if (value < 0.6) {
+      return l10n.loadingRecords;
+    }
+    if (value < 0.85) {
+      return l10n.syncingSchedule;
+    }
+    return l10n.almostReady;
   }
 
   Future<void> _resolveInitialRoute() async {
@@ -112,8 +111,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     _buildLogo(),
                     const SizedBox(height: AppSizes.xl),
                     // App Name
-                    const Text(
-                      'VacciTrack',
+                    Text(
+                      AppLocaleController.instance.l10n.appName,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 36,
@@ -124,7 +123,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: AppSizes.xs),
                     Text(
-                      AppStrings.appTagline,
+                      AppLocaleController.instance.l10n.appTagline,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: AppSizes.fontMd,
@@ -135,12 +134,21 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: AppSizes.md),
                     Text(
-                      AppStrings.appSlogan,
+                      AppLocaleController.instance.l10n.appSlogan,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: AppSizes.fontMd,
                         color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.sm),
+                    Text(
+                      '${AppLocaleController.instance.l10n.appVersionLabel} ${AppStrings.appVersion}',
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: AppSizes.fontXs,
+                        color: AppColors.textTertiary,
                       ),
                     ),
                   ],
@@ -171,7 +179,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                         ),
                         AnimatedBuilder(
                           animation: _progressAnimation,
-                          builder: (_, __) => Text(
+                          builder: (context, child) => Text(
                             '${(_progressAnimation.value * 100).toInt()}%',
                             style: const TextStyle(
                               fontFamily: 'Nunito',
@@ -186,13 +194,13 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     const SizedBox(height: AppSizes.sm),
                     AnimatedBuilder(
                       animation: _progressAnimation,
-                      builder: (_, __) => ClipRRect(
+                      builder: (context, child) => ClipRRect(
                         borderRadius: BorderRadius.circular(
                           AppSizes.radiusFull,
                         ),
                         child: LinearProgressIndicator(
                           value: _progressAnimation.value,
-                          backgroundColor: AppColors.primary.withOpacity(0.15),
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                           valueColor: const AlwaysStoppedAnimation(
                             AppColors.primary,
                           ),
@@ -212,7 +220,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     vertical: AppSizes.sm,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.white.withOpacity(0.8),
+                    color: AppColors.white.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                     border: Border.all(color: AppColors.divider, width: 1),
                   ),
@@ -252,10 +260,10 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       height: 110,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.white.withOpacity(0.9),
+        color: AppColors.white.withValues(alpha: 0.9),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.15),
+            color: AppColors.primary.withValues(alpha: 0.15),
             blurRadius: 40,
             spreadRadius: 10,
           ),
@@ -270,7 +278,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
             color: AppColors.white,
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 blurRadius: 20,
               ),
             ],

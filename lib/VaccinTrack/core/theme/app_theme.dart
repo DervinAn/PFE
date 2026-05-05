@@ -15,10 +15,9 @@ class AppTheme {
         onPrimary: AppColors.textOnPrimary,
         secondary: AppColors.secondary,
         surface: AppColors.surface,
-        background: AppColors.background,
         error: AppColors.error,
       ),
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: AppColors.surface,
       fontFamily: 'Nunito',
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.white,

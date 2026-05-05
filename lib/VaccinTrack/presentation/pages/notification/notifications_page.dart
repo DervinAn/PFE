@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 import '../../../domain/entities/user_entity.dart';
@@ -74,7 +75,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Alerts'),
+        title: Text(context.l10n.alertsTitle),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -89,19 +90,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   child: Row(
                     children: [
                       _TabChip(
-                        label: 'All',
+                        label: context.l10n.all,
                         active: _tabIndex == 0,
                         onTap: () => setState(() => _tabIndex = 0),
                       ),
                       const SizedBox(width: AppSizes.sm),
                       _TabChip(
-                        label: 'Unread',
+                        label: context.l10n.unread,
                         active: _tabIndex == 1,
                         onTap: () => setState(() => _tabIndex = 1),
                       ),
                       const SizedBox(width: AppSizes.sm),
                       _TabChip(
-                        label: 'History',
+                        label: context.l10n.history,
                         active: _tabIndex == 2,
                         onTap: () => setState(() => _tabIndex = 2),
                       ),
@@ -111,10 +112,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 const Divider(height: 1),
                 Expanded(
                   child: _visible.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
-                            'No alerts to show',
-                            style: TextStyle(
+                            context.l10n.noAlertsToShow,
+                            style: const TextStyle(
                               fontFamily: 'Nunito',
                               color: AppColors.textSecondary,
                             ),
@@ -123,7 +124,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       : ListView.separated(
                           padding: const EdgeInsets.all(AppSizes.md),
                           itemCount: _visible.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (context, index) =>
                               const SizedBox(height: AppSizes.md),
                           itemBuilder: (context, index) {
                             final item = _visible[index];
@@ -141,7 +142,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         currentIndex: 2,
         onTap: (index) =>
             handleMainBottomNavTap(context, index: index, currentIndex: 2),
-        items: kMainBottomNavItems,
+        items: mainBottomNavItems(context),
       ),
     );
   }
@@ -239,7 +240,7 @@ class _AlertCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: _priorityColor.withOpacity(0.12),
+                  color: _priorityColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
+import '../../../core/platform/android_settings_channel.dart';
 import '../../../core/notifications/local_notification_service.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
@@ -15,7 +18,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _notificationsEnabled = true;
-  String _language = 'English';
+  String _languageCode = 'en';
   String _fullName = 'Parent';
   String _email = 'No email saved';
   String _phone = 'No phone saved';
@@ -31,12 +34,15 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = await LocalAppStorage.instance.getSignedInUser();
     final notificationsEnabled = await LocalAppStorage.instance
         .getNotificationsEnabled();
+    final languageCode = await LocalAppStorage.instance.getLanguageCode();
     if (!mounted) return;
     setState(() {
       _fullName = user['name'] ?? 'Parent';
       _email = user['email'] ?? 'No email saved';
       _phone = user['phone'] ?? 'No phone saved';
       _notificationsEnabled = notificationsEnabled;
+      _languageCode = languageCode;
+      _notificationTestHint = context.l10n.testNotificationHint;
     });
   }
 
@@ -49,7 +55,7 @@ class _ProfilePageState extends State<ProfilePage> {
           onTap: () => context.pop(),
           child: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Profile & Settings'),
+        title: Text(context.l10n.profileTitle),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -102,26 +108,26 @@ class _ProfilePageState extends State<ProfilePage> {
 
             // Account section
             _SettingsSection(
-              label: 'ACCOUNT',
+              label: context.l10n.account,
               children: [
                 _SettingsTile(
                   icon: Icons.person_outline,
-                  title: 'Personal Information',
+                  title: context.l10n.personalInformation,
                   subtitle: '$_fullName • $_phone',
                   onTap: _editPersonalInfo,
                 ),
                 const Divider(height: 1, indent: 60),
                 _SettingsTile(
                   icon: Icons.group_outlined,
-                  title: 'Children Management',
-                  subtitle: 'Add or edit children profiles',
+                  title: context.l10n.childrenManagement,
+                  subtitle: context.l10n.childrenManagementSubtitle,
                   onTap: () => context.push(AppRoutes.childrenProfiles),
                 ),
                 const Divider(height: 1, indent: 60),
                 _SettingsTile(
                   icon: Icons.badge_outlined,
-                  title: 'Vaccination Card',
-                  subtitle: 'Open, print or share official card',
+                  title: context.l10n.vaccinationCard,
+                  subtitle: context.l10n.vaccinationCardSubtitle,
                   onTap: () async {
                     final childId = await LocalAppStorage.instance
                         .getPreferredChildId();
@@ -140,47 +146,66 @@ class _ProfilePageState extends State<ProfilePage> {
 
             // Preferences section
             _SettingsSection(
-              label: 'PREFERENCES',
+              label: context.l10n.preferences,
               children: [
                 _SettingsTile(
                   icon: Icons.notifications_outlined,
-                  title: 'Notifications',
-                  subtitle: _notificationsEnabled ? 'Enabled' : 'Disabled',
+                  title: context.l10n.notifications,
+                  subtitle: _notificationsEnabled
+                      ? context.l10n.enabled
+                      : context.l10n.disabled,
                   trailing: Switch(
                     value: _notificationsEnabled,
                     onChanged: (v) async {
                       setState(() => _notificationsEnabled = v);
                       await LocalAppStorage.instance.setNotificationsEnabled(v);
+                      await LocalNotificationService.instance
+                          .resyncVaccineReminders();
                     },
-                    activeColor: AppColors.primary,
+                    activeThumbColor: AppColors.primary,
                   ),
                 ),
                 const Divider(height: 1, indent: 60),
                 _SettingsTile(
+                  icon: Icons.settings_outlined,
+                  title: context.l10n.openNotificationSettings,
+                  subtitle: context.l10n.notificationsHelpBody,
+                  onTap: _openNotificationSettings,
+                ),
+                const Divider(height: 1, indent: 60),
+                _SettingsTile(
                   icon: Icons.schedule_outlined,
-                  title: 'Test Notification',
+                  title: context.l10n.exactAlarmSettings,
+                  subtitle: context.l10n.notificationSettingsSavedHint,
+                  onTap: _openExactAlarmSettings,
+                ),
+                const Divider(height: 1, indent: 60),
+                _SettingsTile(
+                  icon: Icons.schedule_outlined,
+                  title: context.l10n.testNotification,
                   subtitle: _notificationTestHint,
                   onTap: _scheduleTestNotification,
                 ),
                 const Divider(height: 1, indent: 60),
                 _SettingsTile(
                   icon: Icons.notification_important_outlined,
-                  title: 'Send Test Now',
-                  subtitle: 'Show an immediate test notification',
+                  title: context.l10n.sendTestNow,
+                  subtitle: context.l10n.testNotificationHint,
                   onTap: _sendNowTestNotification,
                 ),
                 const Divider(height: 1, indent: 60),
                 _SettingsTile(
                   icon: Icons.translate_outlined,
-                  title: 'Language',
-                  subtitle: 'English, Arabic, French',
+                  title: context.l10n.language,
+                  subtitle:
+                      '${context.l10n.languageEnglish}, ${context.l10n.languageArabic}, ${context.l10n.languageFrench}',
                   trailing: GestureDetector(
                     onTap: () => _showLanguagePicker(),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _language,
+                          context.l10n.languageNameFor(_languageCode),
                           style: const TextStyle(
                             fontFamily: 'Nunito',
                             color: AppColors.primary,
@@ -202,19 +227,19 @@ class _ProfilePageState extends State<ProfilePage> {
 
             // App info section
             _SettingsSection(
-              label: 'APP INFORMATION',
+              label: context.l10n.appInformation,
               children: [
                 _SettingsTile(
                   icon: Icons.shield_outlined,
-                  title: 'Privacy Policy',
-                  onTap: () {},
+                  title: context.l10n.privacyPolicyTitle,
+                  onTap: _showPrivacyPolicy,
                 ),
                 const Divider(height: 1, indent: 60),
                 _SettingsTile(
                   icon: Icons.info_outline,
-                  title: 'About VacciTrack',
-                  subtitle: 'Version 2.4.0',
-                  onTap: () {},
+                  title: context.l10n.aboutAppTitle,
+                  subtitle: context.l10n.appVersionLabel,
+                  onTap: _showAbout,
                 ),
               ],
             ),
@@ -230,8 +255,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: OutlinedButton.icon(
                   onPressed: () => _confirmLogout(),
                   icon: const Icon(Icons.logout, color: AppColors.error),
-                  label: const Text(
-                    'Logout',
+                  label: Text(
+                    context.l10n.logout,
                     style: TextStyle(
                       fontFamily: 'Nunito',
                       fontWeight: FontWeight.w700,
@@ -240,7 +265,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: AppColors.error.withOpacity(0.3)),
+                    side: BorderSide(
+                      color: AppColors.error.withValues(alpha: 0.3),
+                    ),
                     backgroundColor: AppColors.errorLight,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppSizes.radiusXl),
@@ -258,7 +285,7 @@ class _ProfilePageState extends State<ProfilePage> {
         currentIndex: 3,
         onTap: (index) =>
             handleMainBottomNavTap(context, index: index, currentIndex: 3),
-        items: kMainBottomNavItems,
+        items: mainBottomNavItems(context),
       ),
     );
   }
@@ -275,11 +302,11 @@ class _ProfilePageState extends State<ProfilePage> {
         padding: const EdgeInsets.all(AppSizes.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: ['English', 'Arabic', 'French'].map((lang) {
-            final isSelected = lang == _language;
+          children: const ['en', 'ar', 'fr'].map((code) {
+            final isSelected = code == _languageCode;
             return ListTile(
               title: Text(
-                lang,
+                context.l10n.languageNameFor(code),
                 style: TextStyle(
                   fontFamily: 'Nunito',
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
@@ -289,9 +316,14 @@ class _ProfilePageState extends State<ProfilePage> {
               trailing: isSelected
                   ? const Icon(Icons.check, color: AppColors.primary)
                   : null,
-              onTap: () {
-                setState(() => _language = lang);
-                Navigator.pop(ctx);
+              onTap: () async {
+                final navigator = Navigator.of(ctx);
+                setState(() => _languageCode = code);
+                await AppLocaleController.instance.setLanguageCode(code);
+                await _loadUser();
+                await LocalNotificationService.instance
+                    .resyncVaccineReminders();
+                navigator.pop();
               },
             );
           }).toList(),
@@ -323,22 +355,23 @@ class _ProfilePageState extends State<ProfilePage> {
       time.hour,
       time.minute,
     );
+    final l10n = context.l10n;
+    final timeLabel = time.format(context);
+    final dateLabel = '${date.day}/${date.month}/${date.year}';
+    final messenger = ScaffoldMessenger.of(context);
 
     if (!scheduledAt.isAfter(now)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please pick a future date & time.')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(l10n.futureDate)));
       return;
     }
 
     try {
       final id = await LocalNotificationService.instance
           .scheduleTestNotification(
-        scheduledAt: scheduledAt,
-        title: 'VacciTrack Test Reminder',
-        body:
-            'Scheduled for ${time.format(context)} on ${date.day}/${date.month}/${date.year}',
-      );
+            scheduledAt: scheduledAt,
+            title: l10n.testReminderTitle,
+            body: '${l10n.scheduledTest}: $timeLabel $dateLabel',
+          );
       final pendingCount = await LocalNotificationService.instance
           .getPendingCount();
       final exactEnabled = await LocalNotificationService.instance
@@ -346,29 +379,30 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
       setState(() {
         _notificationTestHint =
-            'Scheduled for ${date.day}/${date.month}/${date.year} at ${time.format(context)} (pending: $pendingCount)';
+            '${l10n.scheduledTest}: $dateLabel $timeLabel (${l10n.pendingScheduledNotifications}: $pendingCount)';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             exactEnabled == false
-                ? 'Scheduled test #$id (pending: $pendingCount). Exact alarm is off on this phone, so timing may be delayed.'
-                : 'Scheduled test #$id. Pending notifications: $pendingCount',
+                ? '${l10n.scheduledTest} #$id ($pendingCount). ${l10n.notificationSettingsSavedHint}'
+                : '${l10n.scheduledTest} #$id. ${l10n.pendingScheduledNotifications}: $pendingCount',
           ),
         ),
       );
     } catch (error) {
       if (!mounted) return;
       final message = error is StateError ? error.message : error.toString();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
   Future<void> _sendNowTestNotification() async {
     await LocalNotificationService.instance.showNowTestNotification(
-      body: 'Immediate test at ${TimeOfDay.now().format(context)}',
+      body:
+          '${context.l10n.immediateTestAt} ${TimeOfDay.now().format(context)}',
     );
     final pendingCount = await LocalNotificationService.instance
         .getPendingCount();
@@ -376,10 +410,30 @@ class _ProfilePageState extends State<ProfilePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Immediate test sent. Pending scheduled notifications: $pendingCount',
+          '${context.l10n.immediateTestSent}. ${context.l10n.pendingScheduledNotifications}: $pendingCount',
         ),
       ),
     );
+  }
+
+  Future<void> _openNotificationSettings() async {
+    final opened = await AndroidSettingsChannel.openNotificationSettings();
+    if (!mounted) return;
+    if (!opened) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.settingsUnavailable)));
+    }
+  }
+
+  Future<void> _openExactAlarmSettings() async {
+    final opened = await AndroidSettingsChannel.openExactAlarmSettings();
+    if (!mounted) return;
+    if (!opened) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.settingsUnavailable)));
+    }
   }
 
   Future<void> _editPersonalInfo() async {
@@ -391,29 +445,29 @@ class _ProfilePageState extends State<ProfilePage> {
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit Personal Information'),
+        title: Text(context.l10n.editPersonalInformation),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: 'Full Name'),
+              decoration: InputDecoration(labelText: context.l10n.fullName),
             ),
             const SizedBox(height: AppSizes.sm),
             TextField(
               controller: phoneController,
-              decoration: const InputDecoration(labelText: 'Phone'),
+              decoration: InputDecoration(labelText: context.l10n.phoneNumber),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Save'),
+            child: Text(context.l10n.save),
           ),
         ],
       ),
@@ -428,7 +482,63 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Profile updated')));
+    ).showSnackBar(SnackBar(content: Text(context.l10n.profileUpdated)));
+  }
+
+  Future<void> _showPrivacyPolicy() async {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.privacyPolicyTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(context.l10n.privacyIntro),
+              const SizedBox(height: AppSizes.md),
+              Text(
+                context.l10n.privacyDataTitle,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              Text(context.l10n.privacyDataBody),
+              const SizedBox(height: AppSizes.md),
+              Text(
+                context.l10n.privacyUseTitle,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              Text(context.l10n.privacyUseBody),
+              const SizedBox(height: AppSizes.md),
+              Text(
+                context.l10n.privacyContactTitle,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              Text(context.l10n.privacyContactBody),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.l10n.cancel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAbout() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    showAboutDialog(
+      context: context,
+      applicationName: context.l10n.appName,
+      applicationVersion: packageInfo.version,
+      applicationLegalese: context.l10n.aboutBody,
+      children: [
+        const SizedBox(height: AppSizes.sm),
+        Text(context.l10n.notificationsHelpBody),
+      ],
+    );
   }
 
   void _confirmLogout() {
@@ -438,18 +548,15 @@ class _ProfilePageState extends State<ProfilePage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         ),
-        title: const Text(
-          'Logout',
+        title: Text(
+          context.l10n.confirmLogoutTitle,
           style: TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w700),
         ),
-        content: const Text(
-          'Are you sure you want to logout?',
-          style: TextStyle(fontFamily: 'Nunito'),
-        ),
+        content: Text(context.l10n.confirmLogoutBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -459,9 +566,9 @@ class _ProfilePageState extends State<ProfilePage> {
               context.go(AppRoutes.login);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text(
-              'Logout',
-              style: TextStyle(color: AppColors.white),
+            child: Text(
+              context.l10n.logout,
+              style: const TextStyle(color: AppColors.white),
             ),
           ),
         ],

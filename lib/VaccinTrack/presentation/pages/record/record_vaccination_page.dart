@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
+import '../../../core/notifications/local_notification_service.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../domain/entities/child_entity.dart';
 import '../../../domain/entities/vaccine_entity.dart';
@@ -108,15 +110,16 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
   }
 
   Future<void> _save() async {
+    final l10n = context.l10n;
     if (_selectedChildId == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a child')));
+      ).showSnackBar(SnackBar(content: Text(l10n.pleaseSelectAChild)));
       return;
     }
     if (_selectedDoseId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No pending dose available to record')),
+        SnackBar(content: Text(l10n.noPendingDoseAvailableToRecord)),
       );
       return;
     }
@@ -135,29 +138,31 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
           ? null
           : _lotController.text.trim(),
     );
+    await LocalNotificationService.instance.resyncVaccineReminders();
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Vaccination recorded successfully')),
+      SnackBar(content: Text(l10n.vaccinationRecordedSuccessfully)),
     );
     context.pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_children.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Record Vaccination')),
+        appBar: AppBar(title: Text(l10n.recordVaccinationTitle)),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSizes.lg),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Icon(
                   Icons.child_care_outlined,
                   size: 48,
@@ -165,7 +170,7 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
                 ),
                 SizedBox(height: AppSizes.sm),
                 Text(
-                  'No child profile found',
+                  l10n.noChildProfileFound,
                   style: TextStyle(
                     fontFamily: 'Nunito',
                     fontWeight: FontWeight.w700,
@@ -185,7 +190,7 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Record Vaccination'),
+        title: Text(l10n.recordVaccinationTitle),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -198,8 +203,8 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Select Child',
+              Text(
+                l10n.selectChild,
                 style: TextStyle(
                   fontFamily: 'Nunito',
                   fontWeight: FontWeight.w700,
@@ -208,8 +213,8 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
               const SizedBox(height: AppSizes.sm),
               _buildChildDropdown(),
               const SizedBox(height: AppSizes.md),
-              const Text(
-                'Select Dose',
+              Text(
+                l10n.selectDose,
                 style: TextStyle(
                   fontFamily: 'Nunito',
                   fontWeight: FontWeight.w700,
@@ -218,8 +223,8 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
               const SizedBox(height: AppSizes.sm),
               _buildDoseDropdown(),
               const SizedBox(height: AppSizes.md),
-              const Text(
-                'Administration Date',
+              Text(
+                l10n.administrationDate,
                 style: TextStyle(
                   fontFamily: 'Nunito',
                   fontWeight: FontWeight.w700,
@@ -252,28 +257,28 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
               ),
               const SizedBox(height: AppSizes.md),
               AppTextField(
-                label: 'Clinic Name (optional)',
-                hint: 'Example: Central Pediatric Clinic',
+                label: l10n.clinicNameOptional,
+                hint: l10n.clinicNameExample,
                 controller: _clinicController,
                 prefixIcon: const Icon(Icons.local_hospital_outlined),
               ),
               const SizedBox(height: AppSizes.md),
               AppTextField(
-                label: 'Lot Number (optional)',
-                hint: 'Example: BCG-4281',
+                label: l10n.lotNumberOptional,
+                hint: l10n.lotNumberExample,
                 controller: _lotController,
                 prefixIcon: const Icon(Icons.confirmation_number_outlined),
               ),
               const SizedBox(height: AppSizes.md),
               AppTextField(
-                label: 'Remarks',
-                hint: 'Any post-vaccine notes...',
+                label: l10n.remarks,
+                hint: l10n.postVaccineNotesHint,
                 controller: _remarksController,
                 prefixIcon: const Icon(Icons.notes_outlined),
               ),
               const SizedBox(height: AppSizes.lg),
               AppButton(
-                label: 'Confirm Vaccination',
+                label: l10n.confirmVaccination,
                 onPressed: _save,
                 isLoading: _saving,
               ),
@@ -320,6 +325,7 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
   }
 
   Widget _buildDoseDropdown() {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSizes.md,
@@ -332,14 +338,14 @@ class _RecordVaccinationPageState extends State<RecordVaccinationPage> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedDoseId,
-          hint: const Text('No pending dose'),
+          hint: Text(l10n.noPendingDose),
           isExpanded: true,
           items: _doses
               .map(
                 (d) => DropdownMenuItem<String>(
                   value: d.plannedDoseId ?? d.id,
                   child: Text(
-                    '${d.name} - Dose ${d.doseNumber}',
+                    '${d.name} - ${l10n.doseOf(d.doseNumber, d.totalDoses)}',
                     style: const TextStyle(fontFamily: 'Nunito'),
                   ),
                 ),

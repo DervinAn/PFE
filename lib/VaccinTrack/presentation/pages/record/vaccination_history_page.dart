@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_localization.dart';
 import '../../../core/storage/local_app_storage.dart';
 import '../../../core/utils/app_router.dart';
 import '../../../domain/entities/user_entity.dart';
@@ -16,10 +17,10 @@ class VaccinationHistoryPage extends StatefulWidget {
 
 class _VaccinationHistoryPageState extends State<VaccinationHistoryPage> {
   int _filterIndex = 0;
-  final List<String> _filters = const [
-    'All Records',
-    'This Year',
-    'This Month',
+  static const List<String> _filterValues = [
+    'all',
+    'year',
+    'month',
   ];
   bool _loading = true;
   List<VaccinationRecordEntity> _records = const [];
@@ -58,6 +59,12 @@ class _VaccinationHistoryPageState extends State<VaccinationHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final filterLabels = [
+      l10n.allRecords,
+      l10n.thisYear,
+      l10n.thisMonth,
+    ];
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -65,7 +72,7 @@ class _VaccinationHistoryPageState extends State<VaccinationHistoryPage> {
           onTap: () => context.pop(),
           child: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Vaccination History'),
+        title: Text(l10n.vaccinationHistoryTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_circle, color: AppColors.primary),
@@ -95,7 +102,7 @@ class _VaccinationHistoryPageState extends State<VaccinationHistoryPage> {
                         const Icon(Icons.search, color: AppColors.textTertiary),
                         const SizedBox(width: AppSizes.sm),
                         Text(
-                          'Vaccination records',
+                          l10n.vaccinationRecords,
                           style: TextStyle(
                             fontFamily: 'Nunito',
                             color: AppColors.textTertiary,
@@ -109,9 +116,9 @@ class _VaccinationHistoryPageState extends State<VaccinationHistoryPage> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
                   child: Row(
-                    children: _filters.asMap().entries.map((entry) {
+                    children: _filterValues.asMap().entries.map((entry) {
                       final index = entry.key;
-                      final label = entry.value;
+                      final label = filterLabels[index];
                       final isActive = index == _filterIndex;
                       return GestureDetector(
                         onTap: () => setState(() => _filterIndex = index),
@@ -148,9 +155,9 @@ class _VaccinationHistoryPageState extends State<VaccinationHistoryPage> {
                 const SizedBox(height: AppSizes.md),
                 Expanded(
                   child: _filteredRecords.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
-                            'No vaccination history yet.\nUse + to add first record.',
+                            '${l10n.noVaccinationHistoryYet}\n${l10n.usePlusToAddFirstRecord}',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontFamily: 'Nunito',
@@ -163,7 +170,7 @@ class _VaccinationHistoryPageState extends State<VaccinationHistoryPage> {
                             horizontal: AppSizes.md,
                           ),
                           itemCount: _filteredRecords.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (context, index) =>
                               const SizedBox(height: AppSizes.md),
                           itemBuilder: (context, index) {
                             final item = _filteredRecords[index];
@@ -177,7 +184,7 @@ class _VaccinationHistoryPageState extends State<VaccinationHistoryPage> {
         currentIndex: 0,
         onTap: (index) =>
             handleMainBottomNavTap(context, index: index, currentIndex: 0),
-        items: kMainBottomNavItems,
+        items: mainBottomNavItems(context),
       ),
     );
   }
@@ -238,7 +245,7 @@ class _RecordCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const StatusBadge(label: 'COMPLETED', color: AppColors.success),
+              StatusBadge(label: context.l10n.completed, color: AppColors.success),
             ],
           ),
           const SizedBox(height: AppSizes.xs),

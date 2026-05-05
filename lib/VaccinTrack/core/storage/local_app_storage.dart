@@ -21,6 +21,7 @@ class LocalAppStorage {
   static const String _keyUserEmail = 'user_email';
   static const String _keyUserPhone = 'user_phone';
   static const String _keyUserPassword = 'user_password';
+  static const String _keyLanguageCode = 'language_code';
   static const String _keyNotificationsEnabled = 'notifications_enabled';
   static const String _keyChildren = 'children_profiles';
   static const String _keyChildVaccinations = 'child_vaccinations';
@@ -28,6 +29,8 @@ class LocalAppStorage {
   static const String _keyReadNotificationIds = 'notification_read_ids';
   static const String _keyDismissedNotificationIds =
       'notification_dismissed_ids';
+  static const String _keyScheduledVaccineReminderKeys =
+      'scheduled_vaccine_reminder_keys';
   static const String _keyGuidanceRemarks = 'guidance_remarks';
 
   Future<void> init() async {
@@ -75,12 +78,14 @@ class LocalAppStorage {
     await _prefs!.setString(_keyUserEmail, email.toLowerCase());
     await _prefs!.setString(_keyUserPhone, phone ?? '');
     await _prefs!.setString(_keyUserPassword, password);
+    await _prefs!.setString(_keyLanguageCode, getLanguageCodeSync());
     await _prefs!.setBool(_keyNotificationsEnabled, true);
     // New account starts with its own local dataset.
     await _prefs!.remove(_keyChildren);
     await _prefs!.remove(_keyChildVaccinations);
     await _prefs!.remove(_keyReadNotificationIds);
     await _prefs!.remove(_keyDismissedNotificationIds);
+    await _prefs!.remove(_keyScheduledVaccineReminderKeys);
     await _prefs!.remove(_keyGuidanceRemarks);
     await _prefs!.remove(_keyActiveChildId);
   }
@@ -129,6 +134,31 @@ class LocalAppStorage {
     await _prefs!.setString(_keyUserPhone, phone.trim());
   }
 
+  String getLanguageCodeSync() {
+    final code = _prefs?.getString(_keyLanguageCode);
+    return _normalizeLanguageCode(code);
+  }
+
+  Future<String> getLanguageCode() async {
+    await init();
+    return _normalizeLanguageCode(_prefs!.getString(_keyLanguageCode));
+  }
+
+  Future<void> setLanguageCode(String code) async {
+    await init();
+    await _prefs!.setString(_keyLanguageCode, _normalizeLanguageCode(code));
+  }
+
+  String _normalizeLanguageCode(String? code) {
+    switch (code ?? '') {
+      case 'ar':
+      case 'fr':
+        return code!;
+      default:
+        return 'en';
+    }
+  }
+
   Future<bool> getNotificationsEnabled() async {
     await init();
     return _prefs!.getBool(_keyNotificationsEnabled) ?? true;
@@ -137,6 +167,19 @@ class LocalAppStorage {
   Future<void> setNotificationsEnabled(bool value) async {
     await init();
     await _prefs!.setBool(_keyNotificationsEnabled, value);
+  }
+
+  Future<bool> updatePassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    await init();
+    final savedEmail = _prefs!.getString(_keyUserEmail);
+    if (savedEmail == null) return false;
+    final match = savedEmail.trim().toLowerCase() == email.trim().toLowerCase();
+    if (!match) return false;
+    await _prefs!.setString(_keyUserPassword, newPassword);
+    return true;
   }
 
   Future<void> logout() async {
@@ -242,6 +285,7 @@ class LocalAppStorage {
         id: child.id,
         name: child.name,
         dateOfBirth: child.dateOfBirth,
+        gender: child.gender,
         photoUrl: child.photoUrl,
         totalVaccines: totalVaccines,
         completedVaccines: completedVaccines,
@@ -273,6 +317,7 @@ class LocalAppStorage {
         id: child.id,
         name: child.name,
         dateOfBirth: child.dateOfBirth,
+        gender: child.gender,
         photoUrl: child.photoUrl,
         totalVaccines: 0,
         completedVaccines: 0,
@@ -290,6 +335,7 @@ class LocalAppStorage {
         id: child.id,
         name: child.name,
         dateOfBirth: child.dateOfBirth,
+        gender: child.gender,
         photoUrl: child.photoUrl,
         totalVaccines: c.totalVaccines,
         completedVaccines: c.completedVaccines,
@@ -323,6 +369,25 @@ class LocalAppStorage {
   Future<void> setActiveChildId(String childId) async {
     await init();
     await _prefs!.setString(_keyActiveChildId, childId);
+  }
+
+  Future<Set<String>> getScheduledVaccineReminderKeys() async {
+    await init();
+    return (_prefs!.getStringList(_keyScheduledVaccineReminderKeys) ?? [])
+        .toSet();
+  }
+
+  Future<void> setScheduledVaccineReminderKeys(Iterable<String> keys) async {
+    await init();
+    await _prefs!.setStringList(
+      _keyScheduledVaccineReminderKeys,
+      keys.toSet().toList(),
+    );
+  }
+
+  Future<void> clearScheduledVaccineReminderKeys() async {
+    await init();
+    await _prefs!.remove(_keyScheduledVaccineReminderKeys);
   }
 
   Future<String?> getPreferredChildId() async {
